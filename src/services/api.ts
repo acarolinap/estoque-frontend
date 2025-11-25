@@ -1,0 +1,10 @@
+// src/services/api.ts
+import axios from "axios";
+
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+
+console.log("[API] baseURL usada:", baseURL);
+
+export const api = axios.create({
+  baseURL,
+});
