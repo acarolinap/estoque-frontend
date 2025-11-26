@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authService } from "@/services/authService";
+import { authService } from "@/services";
 import { AuthForm } from "@/components/auth/AuthForm";
-
 import Products from "./Products";
 import Categories from "./Categories";
 import StockMovements from "./StockMovements";
 import PriceAdjustment from "./PriceAdjustment";
 import Reports from "./Reports";
-
 import { Button } from "@/components/ui/button";
 import { LogOut, Package, Tags, TrendingUp, DollarSign, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,7 +17,7 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    
+    // Verifica se o usuário está autenticado
     const checkAuth = async () => {
       const authenticated = authService.isAuthenticated();
       setIsAuthenticated(authenticated);
