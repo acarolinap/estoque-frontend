@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,13 @@ export const SizeManager = () => {
   const [name, setName] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!open) {
+      setEditingId(null);
+      setName("");
+    }
+  }, [open]);
 
   const { data: sizes, isLoading } = useQuery({
     queryKey: ["sizes"],
@@ -98,6 +105,7 @@ export const SizeManager = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Impede que este submit suba para o form pai
     if (!name.trim()) return;
 
     if (editingId) {
@@ -120,11 +128,21 @@ export const SizeManager = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          type="button"
+          onClick={(e) => {
+            // CORREÇÃO CRÍTICA: Impede que o clique valide o form pai
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(true);
+          }}
+        >
           Gerenciar Tamanhos
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Gerenciar Tamanhos</DialogTitle>
           <DialogDescription>
@@ -180,6 +198,7 @@ export const SizeManager = () => {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(size)}
+                          type="button"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -187,6 +206,7 @@ export const SizeManager = () => {
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteMutation.mutate(size.id)}
+                          type="button"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
