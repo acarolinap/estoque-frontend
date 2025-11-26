@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/card";
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import type { Product } from "@/services/types";
+import { useQuery } from "@tanstack/react-query";
+import { categoryService } from "@/services";
 
 interface ProductTableProps {
   products: Product[];
@@ -36,10 +38,33 @@ export const ProductTable = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
 
+  // Busca as categorias para cruzar o ID com o Nome (caso o produto venha só com ID)
+  const { data: categories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const { data } = await categoryService.getAll();
+      return data || [];
+    },
+  });
+
+  // Função auxiliar para obter o nome da categoria
+  const getCategoryName = (product: Product) => {
+    // Se o backend já manda o objeto aninhado (antigo padrão)
+    if (product.categories?.name) return product.categories.name;
+    
+    // Se o backend manda só o ID (novo padrão Java), procuramos na lista
+    if (product.categoryId || product.category_id) {
+        const id = product.categoryId || product.category_id;
+        const cat = categories?.find(c => Number(c.id) === Number(id));
+        return cat ? cat.name : "—";
+    }
+    return "—";
+  };
+
   const filteredProducts = products.filter(
     (product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.categories?.name && product.categories.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      getCategoryName(product).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatPrice = (price: number) => {
@@ -100,65 +125,68 @@ export const ProductTable = ({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredProducts.map((product) => (
-                    <TableRow key={product.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>
-                        {product.categories ? (
+                  filteredProducts.map((product) => {
+                    // Lógica de fallback para ler tanto do padrão antigo quanto do novo (Java)
+                    const stock = product.quantity ?? product.stock ?? 0;
+                    const minStock = product.minimumQuantity ?? product.min_stock ?? 0;
+                    const maxStock = product.maximumQuantity ?? product.max_stock ?? 0;
+                    
+                    return (
+                      <TableRow key={product.id} className="hover:bg-muted/50 transition-colors">
+                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell>
                           <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                            {product.categories.name}
+                            {getCategoryName(product)}
                           </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatPrice(product.price)}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        {product.unit || "un"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            product.stock > 10
-                              ? "bg-green-100 text-green-800"
-                              : product.stock > 0
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {product.stock}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right hidden md:table-cell">
-                        {product.min_stock || 0}
-                      </TableCell>
-                      <TableCell className="text-right hidden md:table-cell">
-                        {product.max_stock || 0}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onEdit(product)}
-                            className="hover:bg-primary/10 hover:text-primary"
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatPrice(product.price || 0)}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {product.unit || "un"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              stock > minStock
+                                ? "bg-green-100 text-green-800"
+                                : stock > 0
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
                           >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteProduct(product)}
-                            className="hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                            {stock}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right hidden md:table-cell">
+                          {minStock}
+                        </TableCell>
+                        <TableCell className="text-right hidden md:table-cell">
+                          {maxStock}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onEdit(product)}
+                              className="hover:bg-primary/10 hover:text-primary"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteProduct(product)}
+                              className="hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
